@@ -14,6 +14,7 @@ export interface ConfigurableOptions extends Partial<DefaultOptions> {
   menuItems: MenuItem[];
   customClass?: string;
   customThemeClass?: string;
+  openSubMenuOnHover?: boolean;
   preventCloseOnClick?: boolean; // default will be false - global value for all menu items
 }
 

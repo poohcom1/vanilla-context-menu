@@ -23,6 +23,11 @@ interface State {
   menuItems: MenuItem[];
 }
 
+interface HoverMenuItem extends MenuOption {
+  _onHoverStart?: (e: MouseEvent) => void;
+  _onHoverEnd?: (e: MouseEvent) => void;
+}
+
 class BaseContextMenu {
   // private vars
 
@@ -63,26 +68,68 @@ class BaseContextMenu {
   /**
    * If a menu option has a nested menu, then bind the click event handler that will open the menu
    */
-  #bindNestedMenuListener(menuItems: MenuItem[]): MenuItem[] {
+  #bindNestedMenuListener(
+    menuItems: MenuItem[],
+    newOptions: Partial<ConfigurableOptions>
+  ): MenuItem[] {
     menuItems
       .filter(
         (item) => typeof item === 'object' && item.hasOwnProperty('nestedMenu')
       )
       .map((item: MenuOption) => {
-        const providedCallback = item.callback;
-
-        item.callback = (ev: MouseEvent) => {
-          providedCallback && providedCallback(ev);
+        const createNestedContextMenu = () =>
           new NestedContextMenu(
             {
               ...this.options,
+              ...newOptions,
               menuItems: item.nestedMenu,
             },
-            ev,
+            //@ts-ignore
+            this.initialContextMenuEvent,
             //@ts-ignore
             document.getElementById(`context-menu-item-${item._id}`)
           );
-        };
+
+        if (newOptions.openSubMenuOnHover) {
+          const hoverMenuItem = item as HoverMenuItem;
+
+          let nestedContextMenu: NestedContextMenu | null = null;
+
+          hoverMenuItem._onHoverStart = (e) => {
+            for (const subItem of item.nestedMenu) {
+              if (
+                (e.relatedTarget as HTMLElement)?.id ===
+                // @ts-ignore
+                `context-menu-item-${subItem._id}`
+              ) {
+                return;
+              }
+            }
+
+            nestedContextMenu = createNestedContextMenu();
+          };
+
+          hoverMenuItem._onHoverEnd = (e) => {
+            for (const subItem of item.nestedMenu) {
+              if (
+                (e.relatedTarget as HTMLElement)?.id ===
+                // @ts-ignore
+                `context-menu-item-${subItem._id}`
+              ) {
+                return;
+              }
+            }
+
+            nestedContextMenu?.close();
+          };
+        } else {
+          const providedCallback = item.callback;
+
+          item.callback = (ev: MouseEvent) => {
+            providedCallback && providedCallback(ev);
+            createNestedContextMenu();
+          };
+        }
       });
 
     return menuItems;
@@ -146,7 +193,10 @@ class BaseContextMenu {
       configurableOptions.menuItems
     );
 
-    const menuItems = this.#bindNestedMenuListener(sanitizedMenuItems);
+    const menuItems = this.#bindNestedMenuListener(
+      sanitizedMenuItems,
+      configurableOptions
+    );
     this.#addIdToMenuItems(menuItems);
 
     // extend default options and bind the menu items inside the state for pug template
@@ -191,7 +241,7 @@ class NestedContextMenu extends BaseContextMenu {
       ?.remove();
   };
 
-  #bindCallbacks = (contextMenu: HTMLElement): void => {
+  #bindCallbacks = (contextMenu: HTMLElement, parentEl: HTMLElement): void => {
     this.options.menuItems.forEach((menuItem: MenuItem, index: number) => {
       if (menuItem === 'hr' || !menuItem.callback) {
         return;
@@ -214,6 +264,15 @@ class NestedContextMenu extends BaseContextMenu {
         }
       };
     });
+
+    if (this.options.openSubMenuOnHover) {
+      contextMenu.onmouseleave = (e) => {
+        if (e.relatedTarget === parentEl) {
+          return;
+        }
+        this.#removeExistingNestedContextMenu();
+      };
+    }
   };
 
   #showContextMenu(event: MouseEvent, parentEl: HTMLElement) {
@@ -251,12 +310,16 @@ class NestedContextMenu extends BaseContextMenu {
     contextMenu.oncontextmenu = (e) => e.preventDefault();
 
     // bind the callbacks on each option
-    this.#bindCallbacks(contextMenu);
+    this.#bindCallbacks(contextMenu, parentEl);
 
     // make it visible but wait an event loop to pass
     setTimeout(() => {
       contextMenu.classList.add(style['visible']);
     });
+  }
+
+  close(): void {
+    this.#removeExistingNestedContextMenu();
   }
 
   constructor(
@@ -286,25 +349,37 @@ export default class VanillaContextMenu extends BaseContextMenu {
 
   #bindCallbacks = (contextMenu: HTMLElement): void => {
     this.options.menuItems.forEach((menuItem: MenuItem, index: number) => {
-      if (menuItem === 'hr' || !menuItem.callback) {
+      if (menuItem === 'hr') {
         return;
       }
 
+      const isNestedMenuWithHover =
+        menuItem.nestedMenu && this.options.openSubMenuOnHover;
+
+      if (!menuItem.callback && !isNestedMenuWithHover) {
+        return;
+      }
       const htmlEl: HTMLElement = contextMenu.children[index] as HTMLElement;
+      if (!isNestedMenuWithHover) {
+        htmlEl.onclick = () => {
+          menuItem.callback(this.initialContextMenuEvent);
 
-      htmlEl.onclick = () => {
-        menuItem.callback(this.initialContextMenuEvent);
+          // global value for all menu items, or the individual option or false
+          const preventCloseOnClick: boolean =
+            menuItem.preventCloseOnClick ??
+            this.options.preventCloseOnClick ??
+            false;
 
-        // global value for all menu items, or the individual option or false
-        const preventCloseOnClick: boolean =
-          menuItem.preventCloseOnClick ??
-          this.options.preventCloseOnClick ??
-          false;
+          if (!preventCloseOnClick) {
+            this.#removeExistingContextMenu();
+          }
+        };
+      } else {
+        const hoverMenuItem = menuItem as HoverMenuItem;
 
-        if (!preventCloseOnClick) {
-          this.#removeExistingContextMenu();
-        }
-      };
+        htmlEl.onmouseenter = hoverMenuItem._onHoverStart;
+        htmlEl.onmouseleave = hoverMenuItem._onHoverEnd;
+      }
     });
   };
 
