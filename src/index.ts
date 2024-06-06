@@ -140,7 +140,7 @@ class BaseContextMenu {
       .filter((item) => typeof item === 'object')
       .forEach((item: MenuOption, index) => {
         //@ts-ignore
-        item._id = Date.now() + index;
+        item._id = Math.random();
         if (item.nestedMenu) this.#addIdToMenuItems(item.nestedMenu);
       });
   }
