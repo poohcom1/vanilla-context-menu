@@ -6,6 +6,7 @@ export interface DefaultOptions {
   transitionDuration: number;
   theme: 'black' | 'white';
   normalizePosition?: boolean;
+  customNormalizeScope?: HTMLElement;
 }
 
 export interface ConfigurableOptions extends Partial<DefaultOptions> {
