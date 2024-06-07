@@ -125,8 +125,8 @@ class BaseContextMenu {
         } else {
           const providedCallback = item.callback;
 
-          item.callback = (ev: MouseEvent) => {
-            providedCallback && providedCallback(ev);
+          item.callback = (...args) => {
+            providedCallback && providedCallback(...args);
             createNestedContextMenu();
           };
         }
@@ -249,8 +249,8 @@ class NestedContextMenu extends BaseContextMenu {
 
       const htmlEl: HTMLElement = contextMenu.children[index] as HTMLElement;
 
-      htmlEl.onclick = () => {
-        menuItem.callback(this.initialContextMenuEvent);
+      htmlEl.onclick = (e) => {
+        menuItem.callback(this.initialContextMenuEvent, e);
 
         // global value for all menu items, or the individual option or false
         const preventCloseOnClick: boolean =
@@ -361,8 +361,8 @@ export default class VanillaContextMenu extends BaseContextMenu {
       }
       const htmlEl: HTMLElement = contextMenu.children[index] as HTMLElement;
       if (!isNestedMenuWithHover) {
-        htmlEl.onclick = () => {
-          menuItem.callback(this.initialContextMenuEvent);
+        htmlEl.onclick = (e) => {
+          menuItem.callback(this.initialContextMenuEvent, e);
 
           // global value for all menu items, or the individual option or false
           const preventCloseOnClick: boolean =
