@@ -138,7 +138,7 @@ class BaseContextMenu {
   #addIdToMenuItems(menuItems: MenuItem[]) {
     menuItems
       .filter((item) => typeof item === 'object')
-      .forEach((item: MenuOption, index) => {
+      .forEach((item: MenuOption) => {
         //@ts-ignore
         item._id = Math.random();
         if (item.nestedMenu) this.#addIdToMenuItems(item.nestedMenu);
@@ -225,8 +225,8 @@ class BaseContextMenu {
         contextMenu,
         this.options.customNormalizeScope ?? this.options.scope
       );
-      normalizedX = normalizedPosition.normalizedX;
-      normalizedY = normalizedPosition.normalizedY;
+      ({ normalizedX } = normalizedPosition);
+      ({ normalizedY } = normalizedPosition);
     }
 
     return { normalizedX, normalizedY };
@@ -372,6 +372,7 @@ export default class VanillaContextMenu extends BaseContextMenu {
 
           if (!preventCloseOnClick) {
             this.#removeExistingContextMenu();
+            this.options.onClose?.();
           }
         };
       } else {
@@ -439,6 +440,7 @@ export default class VanillaContextMenu extends BaseContextMenu {
       return;
     }
     this.#removeExistingContextMenu();
+    this.options.onClose?.();
   };
 
   constructor(configurableOptions: ConfigurableOptions) {
