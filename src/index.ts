@@ -407,8 +407,10 @@ export default class VanillaContextMenu extends BaseContextMenu {
       contextMenu
     );
 
-    contextMenu.style.top = `${normalizedY}px`;
-    contextMenu.style.left = `${normalizedX}px`;
+    const { scrollTop, scrollLeft } = document.documentElement;
+
+    contextMenu.style.top = `${normalizedY + scrollTop}px`;
+    contextMenu.style.left = `${normalizedX + scrollLeft}px`;
 
     // apply the css configurable style
     this.applyStyleOnContextMenu(
