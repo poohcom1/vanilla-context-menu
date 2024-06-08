@@ -470,5 +470,6 @@ export default class VanillaContextMenu extends BaseContextMenu {
    */
   close(): void {
     this.#removeExistingContextMenu();
+    this.options.onClose?.();
   }
 }
